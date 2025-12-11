@@ -23,7 +23,8 @@ export default function App() {
     <Navbar
       onMenuOpenChange={setIsMenuOpen}
       isMenuOpen={isMenuOpen}
-      position="sticky"
+      shouldHideOnScroll={false}
+      isBordered
     >
       <NavbarMenuToggle
         aria-label={isMenuOpen ? "Close menu" : "Open menu"}

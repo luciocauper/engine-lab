@@ -1,22 +1,24 @@
 import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Button } from "@heroui/button";
+import { Link } from "@heroui/link";
 import Image from "next/image";
 
 export default function Home() {
   return (
     <div>
       {/*Seção de apresentação*/}
-      <section className="bg-green-700 p-16">
+      <section className="bg-green-700 p-16 items-center justify-center">
         <div className="center mb-8">
           <Image
             src="/example.svg"
             alt="Imagem company svg from freepik"
+            className="place-self-center"
             width={850}
             height={150}
             priority
           />
         </div>
-        <h1 className="font-brand text-8xl text-white items-center justify-center text-center pb-4">
+        <h1 className="font-brand text-8xl text-white text-center pb-4">
           Somos Engine Lab
         </h1>
       </section>
@@ -27,7 +29,7 @@ export default function Home() {
             Áreas de pesquisa
           </h1>
 
-          <div className="grid gap-16 justify-items-start ">
+          <div className="grid gap-16 justify-items-start place-self-center">
             <div className="flex flex-col items-center gap-6 md:flex-row">
               <Image
                 src="/icons/iot-icon.png"
@@ -94,7 +96,14 @@ export default function Home() {
             Quer fazer parte do nosso time?
           </h2>
           <span className="text-white center text-2xl mt-4 font-bricolage">
-            <Button variant="ghost" size="lg" color="success" radius="sm">
+            <Button
+              variant="ghost"
+              size="lg"
+              radius="sm"
+              className="text-white hover:text-black"
+              as={Link}
+              href="/sobre"
+            >
               saiba mais
             </Button>
           </span>
@@ -107,7 +116,7 @@ export default function Home() {
           Notícias, publicações e cursos
         </h1>
 
-        <div className="inline-grid grid-cols-3 gap-4 center">
+        <div className="inline-grid grid-cols-3 gap-4 justify-center">
           <Card className="p-4">
             <CardHeader>
               <h1>Titulo</h1>
@@ -138,15 +147,26 @@ export default function Home() {
       </section>
 
       <section className="bg-neutral-200 p-8">
-        <div className="text-center mb-32">
+        <div className="3grid-cols-1 text-center mb-16">
           <h1 className="text-6xl text-red-800 font-syne font-bricolage">
             Conheça nossa equipe
           </h1>
-          <p>Professores e alunos que fazem o laboratório diariamente</p>
+          <p className="mt-4">
+            Professores e alunos que fazem o laboratório diariamente
+          </p>
+          <Button
+            as={Link}
+            href="/membros"
+            radius="sm"
+            className="bg-emerald-500 mt-8"
+          >
+            Conheça-nos
+          </Button>
+          {/* colocar um modal aqui */}
         </div>
 
         <div className="inline-grid grid-cols-3 gap-4 center">
-          <Card>
+          {/* <Card>
             <CardHeader>
               <h1>Professor</h1>
             </CardHeader>
@@ -162,9 +182,7 @@ export default function Home() {
             <CardHeader>
               <h1>Professor</h1>
             </CardHeader>
-          </Card>
-
-          <h1></h1>
+          </Card> */}
         </div>
       </section>
     </div>
