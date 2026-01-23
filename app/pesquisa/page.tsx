@@ -19,7 +19,13 @@ export default function Pesquisa() {
 
   return (
     <>
-      <h1 className="text-8xl font-brand">Pesquisas</h1>
+      <div>
+        <h1 className="text-8xl font-brand">Pesquisas</h1>
+        <p className="text-xl">
+          Nosso laboratório tem três linhas de pesquisas principais: Visão
+          computacional, Processamento de Linguagem Natural e Internet of Things
+        </p>
+      </div>
 
       <div className="mt-8 text-left">
         <h2 className="text-4xl font-bricolage">2025</h2>
