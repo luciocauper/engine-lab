@@ -13,7 +13,7 @@ import {
 import { Button, ButtonGroup } from "@heroui/button";
 import { Link } from "@heroui/link";
 import { ThemeSwitch } from "../theme-switch";
-import NavLinks, { links } from "@/components/navbar/navlinks";
+import NavLinks, { links } from "@/components/navbar_restrict/navlinks";
 import Logo from "./logo";
 
 export default function App() {
