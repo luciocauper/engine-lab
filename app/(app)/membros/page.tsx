@@ -167,12 +167,6 @@ export default function Membros() {
                   <p>{selected?.descricao}</p>
                 </div>
               </ModalBody>
-
-              <ModalFooter>
-                <Button variant="light" onPress={onClose}>
-                  Fechar
-                </Button>
-              </ModalFooter>
             </>
           )}
         </ModalContent>

@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { Member } from "@/types/member";
+import { memberService } from "@/services/member.service";
+import { getImageUrl } from "@/libs/media";
 import {
   Button,
   Table,
@@ -20,15 +22,14 @@ import {
   useDisclosure,
   Spinner,
 } from "@heroui/react";
-
-const API_URL = "http://localhost:8000/api/pessoas";
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE;
+import { Search, Plus } from "lucide-react";
 
 export default function Home() {
   const [members, setMembers] = useState<Member[]>([]);
   const [selected, setSelected] = useState<Member | null>(null);
   const [readOnly, setReadOnly] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState("");
 
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
   const {
@@ -57,98 +58,41 @@ export default function Home() {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
-  function getImageUrl(image: string | null | undefined) {
-    if (!image) return null;
+  const filteredMembers = useMemo(() => {
+    if (!search.trim()) return members;
 
-    if (image.startsWith("http")) return image;
+    const term = search.toLowerCase();
 
-    return `${API_BASE}/storage/${image}`;
-  }
+    return members.filter(
+      (m) =>
+        m.name?.toLowerCase().includes(term) ||
+        m.cargo?.toLowerCase().includes(term) ||
+        m.curso?.toLowerCase().includes(term),
+    );
+  }, [members, search]);
 
   async function fetchMembers() {
     try {
       setLoading(true);
-      const res = await fetch(API_URL);
-      const data = await res.json();
-
-      const normalized = data.map((m: any) => ({
-        id: m.id ?? "",
-        name: m.name ?? "",
-        image: m.image ?? "",
-        research: m.research ?? "",
-        lattes: m.lattes ?? "",
-        orcid: m.orcid ?? "",
-        descricao: m.descricao ?? "",
-        cargo: m.cargo ?? "",
-        curso: m.curso ?? "",
-      }));
-
-      setMembers(normalized);
+      const data = await memberService.list();
+      setMembers(data);
     } catch (err) {
-      console.error("Erro ao buscar membros", err);
+      console.error(err);
     } finally {
       setLoading(false);
     }
   }
 
   async function createMember(member: Member) {
-    const formData = new FormData();
-
-    formData.append("name", member.name);
-    formData.append("research", member.research ?? "");
-    formData.append("lattes", member.lattes ?? "");
-    formData.append("orcid", member.orcid ?? "");
-    formData.append("descricao", member.descricao ?? "");
-    formData.append("cargo", member.cargo ?? "");
-    formData.append("curso", member.curso ?? "");
-
-    if (selectedFile) {
-      formData.append("image", selectedFile); // 👈 AQUI É O ARQUIVO REAL
-    }
-
-    await fetch(API_URL, {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-      },
-      body: formData,
-    });
+    await memberService.create(member, selectedFile ?? undefined);
   }
 
   async function updateMember(member: Member) {
-    const formData = new FormData();
-
-    formData.append("name", member.name);
-    formData.append("research", member.research ?? "");
-    formData.append("lattes", member.lattes ?? "");
-    formData.append("orcid", member.orcid ?? "");
-    formData.append("descricao", member.descricao ?? "");
-    formData.append("cargo", member.cargo ?? "");
-    formData.append("curso", member.curso ?? "");
-
-    // Laravel não aceita PUT com multipart diretamente
-    // então usamos method spoofing
-    formData.append("_method", "PUT");
-
-    if (selectedFile) {
-      formData.append("image", selectedFile);
-    }
-
-    await fetch(`${API_URL}/${member.id}`, {
-      method: "POST", // 👈 IMPORTANTE
-      headers: {
-        Accept: "application/json",
-      },
-      body: formData,
-    });
-
-    setSelectedFile(null);
+    await memberService.update(member, selectedFile ?? undefined);
   }
 
   async function deleteMember(id: string) {
-    await fetch(`${API_URL}/${id}`, {
-      method: "DELETE",
-    });
+    await memberService.delete(id);
   }
 
   const handleSave = async () => {
@@ -160,6 +104,7 @@ export default function Home() {
       await createMember(form);
     }
 
+    setSelectedFile(null);
     await fetchMembers();
     onOpenChange();
   };
@@ -179,19 +124,30 @@ export default function Home() {
 
   return (
     <main className="p-10 max-w-7xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
         <h1 className="text-3xl font-bold">Membros</h1>
 
-        <Button
-          color="primary"
-          onPress={() => {
-            setReadOnly(false);
-            setForm(emptyMember);
-            onOpen();
-          }}
-        >
-          Novo Membro
-        </Button>
+        <div className="flex flex-col md:flex-row gap-3">
+          <Input
+            placeholder="Pesquisar..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="md:max-w-sm"
+            startContent={<Search size={18} className="text-default-400" />}
+          />
+
+          <Button
+            color="primary"
+            startContent={<Plus size={18} />}
+            onPress={() => {
+              setReadOnly(false);
+              setForm(emptyMember);
+              setSelectedFile(null);
+              onOpen();
+            }}
+          >
+          </Button>
+        </div>
       </div>
 
       {loading ? (
@@ -208,7 +164,7 @@ export default function Home() {
           </TableHeader>
 
           <TableBody emptyContent="Nenhum membro encontrado">
-            {members.map((m) => (
+            {filteredMembers.map((m) => (
               <TableRow key={m.id}>
                 <TableCell>{m.name}</TableCell>
                 <TableCell>{m.cargo}</TableCell>
@@ -270,7 +226,6 @@ export default function Home() {
               </ModalHeader>
 
               <ModalBody className="space-y-8">
-                {/* ================= FOTO ================= */}
                 <div className="flex flex-col items-center gap-4">
                   <div className="w-36 h-36 rounded-full overflow-hidden border-2 border-default-200 shadow-md">
                     {form.image ? (
@@ -303,97 +258,63 @@ export default function Home() {
                         }}
                       />
 
-                      <div className="flex flex-col items-center gap-2">
-                        <Button
-                          color="primary"
-                          variant="flat"
-                          onPress={() => fileInputRef.current?.click()}
-                        >
-                          Selecionar imagem
-                        </Button>
-
-                        {selectedFile && (
-                          <span className="text-xs text-default-500">
-                            {selectedFile.name}
-                          </span>
-                        )}
-                      </div>
+                      <Button
+                        color="primary"
+                        variant="flat"
+                        onPress={() => fileInputRef.current?.click()}
+                      >
+                        Selecionar imagem
+                      </Button>
                     </>
                   )}
                 </div>
 
-                {/* ================= INFORMAÇÕES BÁSICAS ================= */}
-                <div>
-                  <h3 className="text-lg font-semibold mb-4">
-                    Informações Básicas
-                  </h3>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Input
-                      label="Nome"
-                      value={form.name ?? ""}
-                      isDisabled={readOnly}
-                      onChange={(e) => handleChange("name", e.target.value)}
-                    />
-
-                    <Input
-                      label="Cargo"
-                      value={form.cargo ?? ""}
-                      isDisabled={readOnly}
-                      onChange={(e) => handleChange("cargo", e.target.value)}
-                    />
-
-                    <Input
-                      label="Curso"
-                      value={form.curso ?? ""}
-                      isDisabled={readOnly}
-                      onChange={(e) => handleChange("curso", e.target.value)}
-                    />
-
-                    <Input
-                      label="Área de Pesquisa"
-                      value={form.research ?? ""}
-                      isDisabled={readOnly}
-                      onChange={(e) => handleChange("research", e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                {/* ================= LINKS ACADÊMICOS ================= */}
-                <div>
-                  <h3 className="text-lg font-semibold mb-4">
-                    Links Acadêmicos
-                  </h3>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Input
-                      label="Lattes"
-                      value={form.lattes ?? ""}
-                      isDisabled={readOnly}
-                      onChange={(e) => handleChange("lattes", e.target.value)}
-                    />
-
-                    <Input
-                      label="ORCID"
-                      value={form.orcid ?? ""}
-                      isDisabled={readOnly}
-                      onChange={(e) => handleChange("orcid", e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                {/* ================= DESCRIÇÃO ================= */}
-                <div>
-                  <h3 className="text-lg font-semibold mb-4">Descrição</h3>
-
-                  <Textarea
-                    label="Descrição"
-                    value={form.descricao ?? ""}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Input
+                    label="Nome"
+                    value={form.name}
                     isDisabled={readOnly}
-                    onChange={(e) => handleChange("descricao", e.target.value)}
-                    minRows={4}
+                    onChange={(e) => handleChange("name", e.target.value)}
+                  />
+                  <Input
+                    label="Cargo"
+                    value={form.cargo}
+                    isDisabled={readOnly}
+                    onChange={(e) => handleChange("cargo", e.target.value)}
+                  />
+                  <Input
+                    label="Curso"
+                    value={form.curso}
+                    isDisabled={readOnly}
+                    onChange={(e) => handleChange("curso", e.target.value)}
+                  />
+                  <Input
+                    label="Área de Pesquisa"
+                    value={form.research}
+                    isDisabled={readOnly}
+                    onChange={(e) => handleChange("research", e.target.value)}
+                  />
+                  <Input
+                    label="Lattes"
+                    value={form.lattes}
+                    isDisabled={readOnly}
+                    onChange={(e) => handleChange("lattes", e.target.value)}
+                  />
+                  <Input
+                    label="ORCID"
+                    value={form.orcid}
+                    isDisabled={readOnly}
+                    onChange={(e) => handleChange("orcid", e.target.value)}
                   />
                 </div>
+
+                <Textarea
+                  label="Descrição"
+                  value={form.descricao}
+                  isDisabled={readOnly}
+                  onChange={(e) => handleChange("descricao", e.target.value)}
+                  minRows={4}
+                />
               </ModalBody>
 
               <ModalFooter>

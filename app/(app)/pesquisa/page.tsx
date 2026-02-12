@@ -1,21 +1,38 @@
 "use client";
 
+import { useEffect, useState, useMemo } from "react";
 import { Card, CardBody, CardFooter, CardHeader } from "@heroui/card";
 import { Divider } from "@heroui/divider";
-import Link from "next/link";
-import ArrowTopRightOnSquareIcon from "@heroicons/react/24/outline";
-import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  Button,
-  useDisclosure,
-} from "@heroui/react";
+import { Button } from "@heroui/react";
+import { projetoService } from "@/services/projeto.service";
+import { Projeto } from "@/types/projeto";
+import { getImageUrl } from "@/libs/media";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+
+
+
 
 export default function Pesquisa() {
-  const { isOpen, onOpen, onOpenChange } = useDisclosure();
+  const router = useRouter();
+  const [projetos, setProjetos] = useState<Projeto[]>([]);
+  const [selectedProjeto, setSelectedProjeto] = useState<Projeto | null>(null);
+  const [currentImage, setCurrentImage] = useState(0);
+
+  useEffect(() => {
+    async function fetchProjetos() {
+      const data = await projetoService.list();
+      setProjetos(data);
+    }
+    fetchProjetos();
+  }, []);
+
+  const orderedProjetos = useMemo(() => {
+    return [...projetos].sort(
+      (a, b) =>
+        new Date(b.date_begin).getTime() - new Date(a.date_begin).getTime(),
+    );
+  }, [projetos]);
 
   return (
     <>
@@ -27,63 +44,47 @@ export default function Pesquisa() {
         </p>
       </div>
 
-      <div className="mt-8 text-left">
-        <h2 className="text-4xl font-bricolage">2025</h2>
+      <div className="mt-8 flex flex-wrap gap-6">
+        {orderedProjetos.map((projeto) => {
+          const cover =
+            projeto.images && projeto.images.length > 0
+              ? projeto.images[0]
+              : null;
 
-        <Card className="max-w-[400px]">
-          <CardHeader>{/* Imagem do projeto */}</CardHeader>
-          <CardBody>{/* Nome do projeto */}</CardBody>
-          <Divider />
+          return (
+            <Card key={projeto.id} className="max-w-[400px]">
+              <CardHeader>
+                {projeto.images?.length ? (
+                  <img
+                    src={getImageUrl(projeto.images[0])}
+                    alt={projeto.name}
+                    className="w-full h-48 object-cover rounded-lg"
+                  />
+                ) : (
+                  <div className="w-full h-48 flex items-center justify-center bg-default-100 rounded-lg text-default-400">
+                    Sem imagem
+                  </div>
+                )}
+              </CardHeader>
 
-          <CardFooter>
-            <Button onPress={onOpen} variant="light">
-              Saiba mais
-            </Button>
-          </CardFooter>
-        </Card>
-      </div>
+              <CardBody>
+                <h3 className="text-xl font-semibold">{projeto.name}</h3>
+              </CardBody>
 
-      <Modal
-        isDismissable={false}
-        isKeyboardDismissDisabled={true}
-        isOpen={isOpen}
-        onOpenChange={onOpenChange}
-        backdrop="blur"
-      >
-        <ModalContent>
-          {(onClose) => (
-            <>
-              <ModalHeader>Nome da pesquisa</ModalHeader>
-              <ModalBody>
-                <p>
-                  Lorem ipsum dolor sit amet, consectetur adipiscing elit.
-                  Vestibulum dictum tincidunt nisl non maximus. Quisque non
-                  rutrum mauris, suscipit ornare lacus. Donec viverra tincidunt
-                  ipsum, eu laoreet mi fermentum in. Nullam in lacus feugiat,
-                  pretium turpis venenatis, malesuada dui. Integer sagittis
-                  ornare dui. Vivamus porttitor porta imperdiet. Pellentesque
-                  habitant morbi tristique senectus et netus et malesuada fames
-                  ac turpis egestas. Praesent scelerisque risus ut consectetur
-                  porta. Aenean euismod enim ipsum. Duis nulla nisi, egestas non
-                  odio sed, vehicula tempor ipsum. Nunc dignissim sed nulla ut
-                  hendrerit. Duis mauris diam, luctus vitae commodo sit amet,
-                  vehicula eget ligula. Aliquam metus nulla, tincidunt at
-                  tincidunt quis, accumsan sit amet ipsum. Cras feugiat
-                  fringilla nisl, non laoreet risus facilisis nec.
-                </p>
-              </ModalBody>
-              <ModalFooter>
-                <Button color="danger" variant="light" onPress={onClose}>
-                  Fechar
+              <Divider />
+
+              <CardFooter>
+                <Button
+                  variant="light"
+                  onPress={() => router.push(`/pesquisa/${projeto.id}`)}
+                >
+                  Saiba mais
                 </Button>
-                {/* <Button color="primary" onPress={onClose}>
-                  teste
-                </Button> */}
-              </ModalFooter>
-            </>
-          )}
-        </ModalContent>
-      </Modal>
+              </CardFooter>
+            </Card>
+          );
+        })}
+      </div>
     </>
   );
 }
