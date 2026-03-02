@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Projeto;
-use GuzzleHttp\Psr7\UploadedFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use OpenApi\Attributes as OA;
@@ -69,8 +68,6 @@ class ProjetoController extends Controller
             'images.*' => [
                 'required',
                 'image',
-                'mimes:jpg,jpeg,png,webp',
-                'max:5120' // 5MB
             ],
         ]);
 
@@ -155,7 +152,7 @@ class ProjetoController extends Controller
         'date_begin' => 'sometimes|date',
         'date_end' => 'nullable|date|after_or_equal:date_begin',
         'images' => ['sometimes', 'array'],
-        'images.*' => ['nullable'],
+        'images.*' => ['nullable']
     ]);
 
     // 1️⃣ Imagens antigas (strings)

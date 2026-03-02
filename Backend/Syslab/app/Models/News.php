@@ -38,10 +38,11 @@ use OpenApi\Attributes as OA;
         ),
 
         new OA\Property(
-            property: "image",
-            type: "string",
+            property: "images",
+            type: "array",
             nullable: true,
-            example: "news.jpg"
+            items: new OA\Items(type: "string"),
+            example: ["news/news-1.jpg", "news/news-2.jpg"]
         ),
 
         new OA\Property(
@@ -79,7 +80,12 @@ class News extends Model
         'author_id',
         'subtitle',
         'body_text',
-        'image'
+        'images'
+    ];
+
+    protected $casts = [
+        'images' => 'array',
+        'datastamp' => 'datetime',
     ];
 
     /*
@@ -93,4 +99,3 @@ class News extends Model
         return $this->belongsTo(Pessoa::class, 'author_id');
     }
 }
-

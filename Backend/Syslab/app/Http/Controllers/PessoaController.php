@@ -154,7 +154,7 @@ class PessoaController extends Controller
             'name' => 'sometimes|string|max:255',
             'cargo' => 'nullable|string|max:255',
             'curso' => 'nullable|string|max:255',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'image' => 'nullable|image',
             'research' => 'nullable|string|max:255',
             'lattes' => 'nullable|string|max:255',
             'orcid' => 'nullable|string|max:255',
@@ -199,7 +199,11 @@ class PessoaController extends Controller
     )]
     public function destroy($id)
     {
-        Pessoa::findOrFail($id)->delete();
+        $pessoa = Pessoa::findOrFail($id);
+        if ($pessoa->image) {
+            Storage::disk('public')->delete($pessoa->image);
+        }
+        $pessoa->delete();
 
         return response()->noContent();
     }

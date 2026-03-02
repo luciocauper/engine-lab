@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\News;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use OpenApi\Attributes as OA;
 
 class NewsController extends Controller
@@ -42,7 +43,11 @@ class NewsController extends Controller
                     new OA\Property(property: "title", type: "string"),
                     new OA\Property(property: "subtitle", type: "string", nullable: true),
                     new OA\Property(property: "body_text", type: "string"),
-                    new OA\Property(property: "image", type: "string", nullable: true),
+                    new OA\Property(
+                        property: "images",
+                        type: "array",
+                        items: new OA\Items(type: "string")
+                    ),
                     new OA\Property(property: "datastamp", type: "string", format: "date-time"),
                     new OA\Property(property: "author_id", type: "integer")
                 ]
@@ -58,7 +63,27 @@ class NewsController extends Controller
     )]
     public function store(Request $request)
     {
-        return News::create($request->all());
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'subtitle' => 'nullable|string|max:255',
+            'body_text' => 'required|string',
+            'datastamp' => 'required|date',
+            'author_id' => 'required|integer|exists:pessoas,id',
+            'images' => ['required', 'array', 'min:1'],
+            'images.*' => ['required', 'image'],
+        ]);
+
+        if ($request->hasFile('images')) {
+            $imagePaths = [];
+            foreach ($request->file('images') as $image) {
+                $imagePaths[] = $image->store('news', 'public');
+            }
+            $validated['images'] = $imagePaths;
+        }
+
+        $news = News::create($validated);
+
+        return response()->json($news->fresh('author'), 201);
     }
 
 
@@ -106,7 +131,11 @@ class NewsController extends Controller
                     new OA\Property(property: "title", type: "string"),
                     new OA\Property(property: "subtitle", type: "string"),
                     new OA\Property(property: "body_text", type: "string"),
-                    new OA\Property(property: "image", type: "string"),
+                    new OA\Property(
+                        property: "images",
+                        type: "array",
+                        items: new OA\Items(type: "string")
+                    ),
                     new OA\Property(property: "datastamp", type: "string", format: "date-time"),
                     new OA\Property(property: "author_id", type: "integer")
                 ]
@@ -123,8 +152,51 @@ class NewsController extends Controller
     public function update(Request $request, $id)
     {
         $news = News::findOrFail($id);
-        $news->update($request->all());
-        return $news;
+
+        $validated = $request->validate([
+            'title' => 'sometimes|string|max:255',
+            'subtitle' => 'nullable|string|max:255',
+            'body_text' => 'sometimes|string',
+            'datastamp' => 'sometimes|date',
+            'author_id' => 'sometimes|integer|exists:pessoas,id',
+            'images' => ['sometimes', 'array'],
+            'images.*' => ['nullable'],
+        ]);
+
+        // Imagens antigas recebidas como string
+        $existingImages = collect($request->input('images', []))
+            ->filter(fn($item) => is_string($item))
+            ->values()
+            ->toArray();
+
+        // Novas imagens recebidas como arquivo
+        $newImages = [];
+        if ($request->hasFile('images')) {
+            foreach ($request->file('images') as $file) {
+                $newImages[] = $file->store('news', 'public');
+            }
+        }
+
+        // Junta imagens mantidas + novas
+        $finalImages = array_merge($existingImages, $newImages);
+
+        // Remove do storage as imagens que saíram
+        $oldImages = $news->images ?? [];
+        $imagesToDelete = array_diff($oldImages, $finalImages);
+        foreach ($imagesToDelete as $imagePath) {
+            Storage::disk('public')->delete($imagePath);
+        }
+
+        $news->update([
+            'title' => $validated['title'] ?? $news->title,
+            'subtitle' => $validated['subtitle'] ?? $news->subtitle,
+            'body_text' => $validated['body_text'] ?? $news->body_text,
+            'datastamp' => $validated['datastamp'] ?? $news->datastamp,
+            'author_id' => $validated['author_id'] ?? $news->author_id,
+            'images' => $finalImages,
+        ]);
+
+        return response()->json($news->fresh('author'));
     }
 
     #[OA\Delete(
@@ -146,7 +218,16 @@ class NewsController extends Controller
     )]
     public function destroy($id)
     {
-        News::findOrFail($id)->delete();
+        $news = News::findOrFail($id);
+
+        if ($news->images) {
+            foreach ($news->images as $imagePath) {
+                Storage::disk('public')->delete($imagePath);
+            }
+        }
+
+        $news->delete();
+
         return response()->noContent();
     }
 }
